@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TOMOCORE DS 完全版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            background-color: #1a202c;
+            font-family: 'DotGothic16', sans-serif;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        /* DS Handheld Chassis */
+        .ds-body {
+            background: linear-gradient(145deg, #e6e6e6, #cccccc);
+            border-radius: 28px;
+            padding: 20px 16px;
+            box-shadow: 
+                0 20px 50px rgba(0,0,0,0.6),
+                inset 0 2px 4px rgba(255,255,255,0.9),
+                inset 0 -4px 8px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            width: 320px;
+            max-width: 100vw;
+            position: relative;
+            border: 4px solid #b3b3b3;
+        }
+
+        .ds-screen-frame {
+            background: #111;
+            padding: 8px;
+            border-radius: 12px;
+            box-shadow: inset 0 0 12px #000, 0 2px 4px rgba(255,255,255,0.5);
+            position: relative;
+            width: 272px;
+        }
+
+        canvas {
+            display: block;
+            background-color: #000;
+            border-radius: 4px;
+            width: 256px;
+            height: 192px;
+            image-rendering: pixelated;
+            margin: 0 auto;
+        }
+
+        .ds-hinge {
+            width: 92%;
+            height: 14px;
+            background: linear-gradient(to bottom, #cfcfcf, #9e9e9e, #7a7a7a);
+            border-radius: 7px;
+            box-shadow: inset 0 1px 3px rgba(255,255,255,0.8), 0 2px 4px rgba(0,0,0,0.4);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 12px;
+        }
+
+        .ds-led {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #00ff66;
+            box-shadow: 0 0 6px #00ff66;
+        }
+
+        /* Controls Layout */
+        .ds-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 4px 8px;
+        }
+
+        .dpad {
+            position: relative;
+            width: 84px;
+            height: 84px;
+        }
+
+        .btn-d {
+            position: absolute;
+            background: #333;
+            border: 1px solid #111;
+            border-radius: 4px;
+            box-shadow: 0 3px 0 #111, inset 0 1px 2px rgba(255,255,255,0.3);
+            color: #aaa;
+            font-size: 11px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            active: translateY(2px);
+        }
+        .btn-d:active { transform: translateY(2px); box-shadow: 0 1px 0 #111; }
+
+        .btn-up { top: 0; left: 28px; width: 28px; height: 28px; }
+        .btn-down { bottom: 0; left: 28px; width: 28px; height: 28px; }
+        .btn-left { top: 28px; left: 0; width: 28px; height: 28px; }
+        .btn-right { top: 28px; right: 0; width: 28px; height: 28px; }
+        .dpad-center { position: absolute; top: 28px; left: 28px; width: 28px; height: 28px; background: #333; }
+
+        .action-btns {
+            position: relative;
+            width: 84px;
+            height: 84px;
+        }
+
+        .btn-a-group {
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: #d9534f;
+            color: white;
+            font-weight: bold;
+            font-size: 11px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 3px 0 #8b0000, inset 0 1px 2px rgba(255,255,255,0.4);
+            cursor: pointer;
+        }
+        .btn-a-group:active { transform: translateY(2px); box-shadow: 0 1px 0 #8b0000; }
+
+        .btn-x { top: 0; left: 29px; background: #5bc0de; box-shadow: 0 3px 0 #269abc; }
+        .btn-b { bottom: 0; left: 29px; background: #f0ad4e; box-shadow: 0 3px 0 #d58512; }
+        .btn-y { top: 29px; left: 0; background: #5cb85c; box-shadow: 0 3px 0 #398439; }
+        .btn-a { top: 29px; right: 0; background: #d9534f; box-shadow: 0 3px 0 #ac2925; }
+
+        /* Notification Modal */
+        #game-modal {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75);
+            z-index: 50;
+            border-radius: 20px;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+            color: #fff;
+            text-align: center;
+        }
+
+        #modal-box {
+            background: #2d3748;
+            border: 3px solid #ed8936;
+            border-radius: 12px;
+            padding: 16px;
+            width: 85%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+        }
+
+        /* Custom Scrollbars for Canvas UI */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 2px; }
+    </style>
+</head>
+<body>
+
+<div class="ds-body">
+    <!-- Modal Dialog (Replaces alert) -->
+    <div id="game-modal">
+        <div id="modal-box">
+            <h3 id="modal-title" class="text-amber-400 font-bold mb-2 text-sm">通知</h3>
+            <p id="modal-text" class="text-xs mb-4 text-gray-200">メッセージ本文</p>
+            <button id="modal-close-btn" class="bg-amber-500 hover:bg-amber-600 text-black px-4 py-1 rounded text-xs font-bold">OK</button>
+        </div>
+    </div>
+
+    <!-- Top Screen -->
+    <div class="ds-screen-frame">
+        <canvas id="screen-top" width="256" height="192"></canvas>
+    </div>
+
+    <!-- Hinge with Power LED -->
+    <div class="ds-hinge">
+        <div class="text-[9px] text-gray-600 tracking-wider">TOMOCORE DUAL SCREEN</div>
+        <div class="ds-led" id="power-led"></div>
+    </div>
+
+    <!-- Bottom Touch Screen -->
+    <div class="ds-screen-frame">
+        <canvas id="screen-bottom" width="256" height="192"></canvas>
+    </div>
+
+    <!-- Handheld Controller Buttons -->
+    <div class="ds-controls">
+        <div class="dpad">
+            <div class="dpad-center"></div>
+            <div class="btn-d btn-up" id="btn-up">▲</div>
+            <div class="btn-d btn-down" id="btn-down">▼</div>
+            <div class="btn-d btn-left" id="btn-left">◀</div>
+            <div class="btn-d btn-right" id="btn-right">▶</div>
+        </div>
+
+        <div class="flex flex-col items-center gap-1">
+            <span class="text-[10px] text-gray-500 font-bold">MICROPHONE</span>
+            <div class="w-3 h-3 rounded-full bg-gray-800 border border-gray-600"></div>
+            <span class="text-[9px] text-gray-400 mt-2">SELECT / START</span>
+            <div class="flex gap-2">
+                <button id="btn-select" class="w-6 h-2 bg-gray-600 rounded-full text-[7px] text-white">SEL</button>
+                <button id="btn-start" class="w-6 h-2 bg-gray-600 rounded-full text-[7px] text-white">ST</button>
+            </div>
+        </div>
+
+        <div class="action-btns">
+            <div class="btn-a-group btn-x" id="btn-x">X</div>
+            <div class="btn-a-group btn-y" id="btn-y">Y</div>
+            <div class="btn-a-group btn-b" id="btn-b">B</div>
+            <div class="btn-a-group btn-a" id="btn-a">A</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Audio Engine & Voice Synthesizer
+const AudioEngine = {
+    ctx: null,
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    },
+    playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
+        this.init();
+        try {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+            gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + duration);
+        } catch(e){}
+    },
+    click() { this.playTone(800, 'sine', 0.05, 0.08); },
+    select() { this.playTone(1200, 'square', 0.08, 0.08); },
+    cancel() { this.playTone(250, 'sawtooth', 0.12, 0.1); },
+    coin() {
+        this.playTone(987, 'sine', 0.08, 0.1);
+        setTimeout(() => this.playTone(1318, 'sine', 0.2, 0.12), 80);
+    },
+    fanfare() {
+        const notes = [523, 659, 783, 1046];
+        notes.forEach((n, i) => {
+            setTimeout(() => this.playTone(n, 'triangle', 0.2, 0.12), i * 120);
+        });
+    }
+};
+
+// Web Speech API Mii Voice
+function speakMii(text, pitch = 1.2, rate = 1.3) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const ut = new SpeechSynthesisUtterance(text);
+        ut.lang = 'ja-JP';
+        ut.pitch = Math.max(0.5, Math.min(2.0, pitch / 50)); // Scale 0-100 to 0.5-2.0
+        ut.rate = Math.max(0.8, Math.min(1.8, rate / 50));   // Scale 0-100 to 0.8-1.8
+        window.speechSynthesis.speak(ut);
+    } else {
+        // Fallback tone speech effect
+        for(let i=0; i<Math.min(text.length, 10); i++) {
+            setTimeout(() => AudioEngine.playTone(400 + (text.charCodeAt(i)%300), 'square', 0.06), i*70);
+        }
+    }
+}
+
+// Master Data DB
+const FOOD_SHOP = [
+    { id: 'f0', name: 'おにぎり', price: 100, fill: 20 },
+    { id: 'f1', name: '特製ラーメン', price: 450, fill: 50 },
+    { id: 'f2', name: '高級マグロ寿司', price: 1200, fill: 80 },
+    { id: 'f3', name: '苺ショートケーキ', price: 350, fill: 35 },
+    { id: 'f4', name: '激辛カレー', price: 500, fill: 60 },
+    { id: 'f5', name: '新鮮サラダ', price: 250, fill: 25 },
+    { id: 'f6', name: '焼き立てピザ', price: 850, fill: 75 },
+    { id: 'f7', name: 'たこ焼き', price: 300, fill: 30 },
+    { id: 'f8', name: '宇治抹茶パフェ', price: 400, fill: 40 },
+    { id: 'f9', name: '特盛牛丼', price: 600, fill: 65 }
+];
+
+const CLOTHES_SHOP = [
+    { id: 'c0', name: 'カジュアルTシャツ', price: 300, style: 0 },
+    { id: 'c1', name: 'フォーマルスーツ', price: 1500, style: 1 },
+    { id: 'c2', name: 'スポーティジャージ', price: 600, style: 2 },
+    { id: 'c3', name: '伝統の着物', price: 2000, style: 3 },
+    { id: 'c4', name: 'ロックパーカー', price: 800, style: 4 },
+    { id: 'c5', name: '涼しげな浴衣', price: 1200, style: 5 },
+    { id: 'c6', name: '貴族のドレス', price: 2500, style: 6 },
+    { id: 'c7', name: '探偵コート', price: 1100, style: 7 },
+    { id: 'c8', name: '着ぐるみ（熊）', price: 1800, style: 8 },
+    { id: 'c9', name: '宇宙服', price: 3000, style: 9 }
+];
+
+const COLOR_PALETTES = {
+    skin: ['#ffe0bd', '#ffcd94', '#eac086', '#ffad60', '#ffe39f', '#623d26'],
+    hair: ['#1a1a1a', '#4a3018', '#c49a6c', '#ffd700', '#8b0000', '#2b5278', '#52782b', '#782b75'],
+    cloth: ['#e53e3e', '#3182ce', '#38a169', '#d69e2e', '#805ad5', '#dd6b20', '#319795', '#4a5568']
+};
+
+class Resident {
+    constructor(id, name, dna) {
+        this.id = id;
+        this.name = name || `トモダチ${id+1}`;
+        this.room = id; // 0 to 99
+        this.dna = dna || {
+            hair: Math.floor(Math.random()*10),
+            eye: Math.floor(Math.random()*10),
+            eyebrow: Math.floor(Math.random()*5),
+            nose: Math.floor(Math.random()*5),
+            mouth: Math.floor(Math.random()*5),
+            skinColor: Math.floor(Math.random()*COLOR_PALETTES.skin.length),
+            hairColor: Math.floor(Math.random()*COLOR_PALETTES.hair.length),
+            cloth: Math.floor(Math.random()*10),
+            clothColor: Math.floor(Math.random()*COLOR_PALETTES.cloth.length),
+            pitch: 50 + Math.floor(Math.random()*30),
+            speed: 50 + Math.floor(Math.random()*30),
+            height: 50,
+            weight: 50
+        };
+        this.fullness = 60;
+        this.happiness = 70;
+        this.catchphrase = "よろしくね！";
+    }
+}
+
+// Core Game Engine State
+const Game = {
+    scene: 'TITLE',
+    money: 5000,
+    weather: 'SUNNY', // SUNNY, RAIN, SNOW, SAKURA
+    weatherParticles: [],
+    frame: 0,
+    residents: [],
+    selectedResident: null,
+    inventory: [],
+    canvasDrawingData: null, // Custom drawing pixel matrix
+    subPage: 0,
+    temp: {},
+
+    // Canvas references
+    topCanvas: document.getElementById('screen-top'),
+    topCtx: document.getElementById('screen-top').getContext('2d'),
+    bottomCanvas: document.getElementById('screen-bottom'),
+    bottomCtx: document.getElementById('screen-bottom').getContext('2d'),
+
+    // Touch Input State
+    input: {
+        tapped: false,
+        x: 0, y: 0,
+        isDown: false,
+        keys: { up: false, down: false, left: false, right: false, a: false, b: false, x: false, y: false },
+        justPressed: { a: false, b: false }
+    }
+};
+
+// Seed initial population
+for (let i = 0; i < 5; i++) {
+    const names = ['ルウド', 'アオイ', 'サクラ', 'タクミ', 'リン'];
+    Game.residents.push(new Resident(i, names[i]));
+}
+
+// Modal Dialog Utility
+function showModal(title, text, callback) {
+    const modal = document.getElementById('game-modal');
+    document.getElementById('modal-title').innerText = title;
+    document.getElementById('modal-text').innerText = text;
+    modal.style.display = 'flex';
+    
+    const closeBtn = document.getElementById('modal-close-btn');
+    const handler = () => {
+        modal.style.display = 'none';
+        closeBtn.removeEventListener('click', handler);
+        if(callback) callback();
+    };
+    closeBtn.addEventListener('click', handler);
+}
+
+// Canvas Touch Handler
+function getTouchPos(canvas, evt) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+    const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+    return {
+        x: Math.floor((clientX - rect.left) / (rect.width / 256)),
+        y: Math.floor((clientY - rect.top) / (rect.height / 192))
+    };
+}
+
+Game.bottomCanvas.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    AudioEngine.init();
+    const pos = getTouchPos(Game.bottomCanvas, e);
+    Game.input.tapped = true;
+    Game.input.isDown = true;
+    Game.input.x = pos.x;
+    Game.input.y = pos.y;
+});
+
+Game.bottomCanvas.addEventListener('pointermove', (e) => {
+    if(Game.input.isDown) {
+        const pos = getTouchPos(Game.bottomCanvas, e);
+        Game.input.x = pos.x;
+        Game.input.y = pos.y;
+    }
+});
+
+window.addEventListener('pointerup', () => {
+    Game.input.isDown = false;
+});
+
+// Setup Virtual Button Inputs
+const btnMapping = [
+    ['btn-up', 'up'], ['btn-down', 'down'], ['btn-left', 'left'], ['btn-right', 'right'],
+    ['btn-a', 'a'], ['btn-b', 'b'], ['btn-x', 'x'], ['btn-y', 'y']
+];
+
+btnMapping.forEach(([elemId, key]) => {
+    const el = document.getElementById(elemId);
+    if(el) {
+        el.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            AudioEngine.init();
+            Game.input.keys[key] = true;
+            if(key === 'a') Game.input.justPressed.a = true;
+            if(key === 'b') Game.input.justPressed.b = true;
+        });
+        el.addEventListener('pointerup', () => { Game.input.keys[key] = false; });
+        el.addEventListener('pointerleave', () => { Game.input.keys[key] = false; });
+    }
+});
+
+// Graphic Helper Functions
+function fill(ctx, col) { ctx.fillStyle = col; ctx.fillRect(0, 0, 256, 192); }
+
+function drawText(ctx, str, x, y, size = 11, col = '#000', align = 'left') {
+    ctx.fillStyle = col;
+    ctx.font = `${size}px 'DotGothic16'`;
+    ctx.textAlign = align;
+    ctx.fillText(str, x, y);
+}
+
+function drawRect(ctx, x, y, w, h, col, borderCol = null) {
+    ctx.fillStyle = col;
+    ctx.fillRect(x, y, w, h);
+    if(borderCol) {
+        ctx.strokeStyle = borderCol;
+        ctx.strokeRect(x, y, w, h);
+    }
+}
+
+function drawButton(ctx, x, y, w, h, label, bgCol = '#edf2f7', textCol = '#2d3748') {
+    ctx.fillStyle = bgCol;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = '#4a5568';
+    ctx.strokeRect(x, y, w, h);
+    
+    // Highlight top border
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillRect(x, y, w, 2);
+
+    drawText(ctx, label, x + w / 2, y + h / 2 + 4, 11, textCol, 'center');
+
+    // Tap detection
+    if(Game.input.tapped && Game.input.x >= x && Game.input.x <= x + w && Game.input.y >= y && Game.input.y <= y + h) {
+        Game.input.tapped = false;
+        AudioEngine.click();
+        return true;
+    }
+    return false;
+}
+
+// Parametric Mii Rendering Algorithm (50+ combinations per part)
+function drawMii(ctx, dna, x, y, scale = 1.0) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    const skinCol = COLOR_PALETTES.skin[dna.skinColor % COLOR_PALETTES.skin.length];
+    const hairCol = COLOR_PALETTES.hair[dna.hairColor % COLOR_PALETTES.hair.length];
+    const clothCol = COLOR_PALETTES.cloth[dna.clothColor % COLOR_PALETTES.cloth.length];
+
+    // Body Clothes
+    ctx.fillStyle = clothCol;
+    ctx.beginPath();
+    ctx.arc(0, 38, 22, Math.PI, 0);
+    ctx.fill();
+
+    // Head Base
+    ctx.fillStyle = skinCol;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 24, 28, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hair Style Variations
+    ctx.fillStyle = hairCol;
+    const hStyle = dna.hair % 10;
+    ctx.beginPath();
+    if (hStyle === 0) { // Short crop
+        ctx.arc(0, -8, 25, Math.PI, 0);
+    } else if (hStyle === 1) { // Spiky hair
+        ctx.arc(0, -6, 25, Math.PI, 0);
+        for(let i = -20; i <= 20; i += 8) {
+            ctx.lineTo(i, -32);
+        }
+    } else if (hStyle === 2) { // Long Bob
+        ctx.arc(0, -6, 26, Math.PI, 0);
+        ctx.rect(-26, -6, 8, 38);
+        ctx.rect(18, -6, 8, 38);
+    } else if (hStyle === 3) { // Afro / Curly
+        ctx.arc(0, -12, 32, 0, Math.PI * 2);
+    } else if (hStyle === 4) { // Twin tails
+        ctx.arc(0, -10, 25, Math.PI, 0);
+        ctx.arc(-26, 0, 10, 0, Math.PI * 2);
+        ctx.arc(26, 0, 10, 0, Math.PI * 2);
+    } else if (hStyle === 5) { // Topknot / Bun
+        ctx.arc(0, -8, 25, Math.PI, 0);
+        ctx.arc(0, -32, 10, 0, Math.PI * 2);
+    } else if (hStyle === 6) { // Side Bangs
+        ctx.arc(0, -8, 25, Math.PI, 0);
+        ctx.ellipse(-12, -4, 12, 20, 0.3, 0, Math.PI * 2);
+    } else { // Cap / Helmet
+        ctx.arc(0, -6, 26, Math.PI, 0);
+        ctx.fillRect(-28, -8, 56, 6);
+    }
+    ctx.fill();
+
+    // Eyebrows
+    ctx.strokeStyle = hairCol;
+    ctx.lineWidth = 2;
+    const ebY = -12;
+    ctx.beginPath();
+    ctx.moveTo(-16, ebY); ctx.lineTo(-6, ebY - (dna.eyebrow % 3));
+    ctx.moveTo(6, ebY - (dna.eyebrow % 3)); ctx.lineTo(16, ebY);
+    ctx.stroke();
+
+    // Eyes
+    ctx.fillStyle = '#000';
+    ctx.strokeStyle = '#000';
+    const eStyle = dna.eye % 10;
+    const eyeY = -2;
+    if (eStyle === 0) { // Simple Dots
+        ctx.beginPath(); ctx.arc(-10, eyeY, 3, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(10, eyeY, 3, 0, Math.PI*2); ctx.fill();
+    } else if (eStyle === 1) { // Anime sparkles
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.ellipse(-10, eyeY, 5, 7, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(10, eyeY, 5, 7, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(-10, eyeY, 3, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(10, eyeY, 3, 0, Math.PI*2); ctx.fill();
+    } else { // Happy Arcs
+        ctx.beginPath(); ctx.arc(-10, eyeY, 4, Math.PI, 0); ctx.stroke();
+        ctx.beginPath(); ctx.arc(10, eyeY, 4, Math.PI, 0); ctx.stroke();
+    }
+
+    // Nose
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 6 + (dna.nose % 3), 2, 0, Math.PI);
+    ctx.stroke();
+
+    // Mouth
+    const mStyle = dna.mouth % 5;
+    const mouthY = 16;
+    ctx.beginPath();
+    if (mStyle === 0) { // Smile
+        ctx.arc(0, mouthY - 3, 6, 0, Math.PI);
+    } else if (mStyle === 1) { // Open mouth
+        ctx.fillStyle = '#e53e3e';
+        ctx.ellipse(0, mouthY, 5, 3, 0, 0, Math.PI*2);
+        ctx.fill();
+    } else { // Straight line
+        ctx.moveTo(-6, mouthY); ctx.lineTo(6, mouthY);
+    }
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+// Weather System Engine
+function updateWeather() {
+    if (Game.weather !== 'SUNNY' && Math.random() < 0.3) {
+        Game.weatherParticles.push({
+            x: Math.random() * 256,
+            y: -10,
+            speed: Game.weather === 'RAIN' ? 6 : 1.5,
+            size: Game.weather === 'SAKURA' ? 3 : (Game.weather === 'SNOW' ? 2 : 1)
+        });
+    }
+
+    Game.weatherParticles.forEach(p => {
+        p.y += p.speed;
+        if(Game.weather === 'RAIN') p.x -= 1;
+        if(Game.weather === 'SAKURA') p.x += Math.sin(Game.frame * 0.05);
+    });
+
+    Game.weatherParticles = Game.weatherParticles.filter(p => p.y < 192);
+}
+
+function drawBackgroundSky(ctx) {
+    let grad = ctx.createLinearGradient(0, 0, 0, 192);
+    if (Game.weather === 'SUNNY') {
+        grad.addColorStop(0, '#63b3ed'); grad.addColorStop(1, '#ebf8ff');
+    } else if (Game.weather === 'RAIN') {
+        grad.addColorStop(0, '#4a5568'); grad.addColorStop(1, '#a0aec0');
+    } else if (Game.weather === 'SNOW') {
+        grad.addColorStop(0, '#2b6cb0'); grad.addColorStop(1, '#e2e8f0');
+    } else { // SAKURA
+        grad.addColorStop(0, '#fbb6ce'); grad.addColorStop(1, '#fff5f7');
+    }
+    fill(ctx, grad);
+
+    // Weather Particles Render
+    Game.weatherParticles.forEach(p => {
+        if (Game.weather === 'RAIN') {
+            drawRect(ctx, p.x, p.y, 1, 6, '#bee3f8');
+        } else if (Game.weather === 'SAKURA') {
+            ctx.fillStyle = '#fbb6ce';
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+        } else {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+        }
+    });
+}
+
+// Local Storage Manager
+function saveGameData() {
+    try {
+        const payload = {
+            money: Game.money,
+            inventory: Game.inventory,
+            residents: Game.residents,
+            weather: Game.weather
+        };
+        localStorage.setItem('tomocore_ds_save', JSON.stringify(payload));
+        AudioEngine.coin();
+        showModal("セーブ完了", "ゲームデータを本体メモリーに保存しました！");
+    } catch(e) {
+        showModal("エラー", "セーブに失敗しました。");
+    }
+}
+
+function loadGameData() {
+    try {
+        const raw = localStorage.getItem('tomocore_ds_save');
+        if (raw) {
+            const data = JSON.parse(raw);
+            Game.money = data.money;
+            Game.inventory = data.inventory || [];
+            Game.weather = data.weather || 'SUNNY';
+            Game.residents = data.residents.map(r => {
+                let res = new Resident(r.id, r.name, r.dna);
+                res.fullness = r.fullness;
+                res.happiness = r.happiness;
+                return res;
+            });
+            AudioEngine.select();
+            showModal("ロード成功", "セーブデータを読み込みました！");
+        } else {
+            showModal("通知", "セーブデータが見つかりません。");
+        }
+    } catch(e) {
+        showModal("エラー", "ロードに失敗しました。");
+    }
+}
+
+// SCENE: TITLE
+function sceneTitle() {
+    drawBackgroundSky(Game.topCtx);
+    drawText(Game.topCtx, "トモダチコレクション", 128, 70, 20, '#2b6cb0', 'center');
+    drawText(Game.topCtx, "TOMOCORE DS 完全版", 128, 95, 14, '#2d3748', 'center');
+
+    fill(Game.bottomCtx, '#f7fafc');
+    drawRect(Game.bottomCtx, 20, 40, 216, 112, '#edf2f7', '#cbd5e0');
+    
+    if (Math.floor(Game.frame / 25) % 2 === 0) {
+        drawText(Game.bottomCtx, "画面をタッチしてスタート！", 128, 100, 13, '#e53e3e', 'center');
+    }
+
+    if (Game.input.tapped) {
+        Game.input.tapped = false;
+        AudioEngine.select();
+        Game.scene = 'MAP';
+    }
+}
+
+// 10 Town Facilities Config
+const TOWN_FACILITIES = [
+    { id: 'APARTMENT', name: '100室マンション', x: 15, y: 15, w: 105, h: 32, color: '#fbb6ce' },
+    { id: 'CITY_HALL', name: '市役所', x: 135, y: 15, w: 105, h: 32, color: '#9ae6b4' },
+    { id: 'SHOP', name: 'ショップ(10店)', x: 15, y: 55, w: 105, h: 32, color: '#faf089' },
+    { id: 'DRESSUP', name: 'お着替え館', x: 135, y: 55, w: 105, h: 32, color: '#fbd38d' },
+    { id: 'MINIGAME', name: 'ゲームセンター', x: 15, y: 95, w: 105, h: 32, color: '#90cdf4' },
+    { id: 'LIVE', name: 'ライブステージ', x: 135, y: 95, w: 105, h: 32, color: '#d6bcfa' },
+    { id: 'SHRINE', name: '相性神社', x: 15, y: 135, w: 105, h: 32, color: '#feb2b2' },
+    { id: 'CANVAS', name: 'お絵かき広場', x: 135, y: 135, w: 105, h: 32, color: '#cbd5e0' }
+];
+
+// SCENE: MAP
+function sceneMap() {
+    drawBackgroundSky(Game.topCtx);
+    drawText(Game.topCtx, "TOMOCORE ISLAND", 128, 25, 16, '#2d3748', 'center');
+    drawText(Game.topCtx, `所持金: ${Game.money}G  |  住人: ${Game.residents.length}/100人`, 128, 175, 11, '#1a202c', 'center');
+
+    // Weather change button on top right
+    fill(Game.bottomCtx, '#e2e8f0');
+
+    TOWN_FACILITIES.forEach(f => {
+        if (drawButton(Game.bottomCtx, f.x, f.y, f.w, f.h, f.name, f.color)) {
+            Game.scene = f.id;
+            Game.subPage = 0;
+            if (f.id === 'CANVAS' && !Game.canvasDrawingData) {
+                Game.canvasDrawingData = Game.bottomCtx.createImageData(256, 192);
+            }
+        }
+    });
+
+    // Weather Toggle Button
+    if (drawButton(Game.bottomCtx, 180, 170, 60, 18, `天候:${Game.weather}`, '#e2e8f0')) {
+        const wList = ['SUNNY', 'RAIN', 'SNOW', 'SAKURA'];
+        Game.weather = wList[(wList.indexOf(Game.weather) + 1) % wList.length];
+    }
+}
+
+// SCENE: 100-ROOM APARTMENT
+function sceneApartment() {
+    drawBackgroundSky(Game.topCtx);
+    drawText(Game.topCtx, "100室 マンション", 128, 20, 16, '#2d3748', 'center');
+    drawText(Game.topCtx, `全100部屋中 ${Game.residents.length}室 入居中`, 128, 40, 11, '#4a5568', 'center');
+
+    fill(Game.bottomCtx, '#2d3748');
+
+    const pageSize = 20; // 20 rooms per page (5 pages total = 100)
+    const startIdx = Game.subPage * pageSize;
+
+    for (let i = 0; i < pageSize; i++) {
+        const roomNum = startIdx + i;
+        const col = i % 5;
+        const row = Math.floor(i / 5);
+        const rx = 10 + col * 48;
+        const ry = 10 + row * 34;
+
+        const inhabitant = Game.residents.find(r => r.room === roomNum);
+
+        drawRect(Game.bottomCtx, rx, ry, 44, 30, inhabitant ? '#feebc8' : '#4a5568', '#718096');
+        drawText(Game.bottomCtx, `${roomNum + 1}`, rx + 3, ry + 10, 9, inhabitant ? '#744210' : '#a0aec0');
+
+        if (inhabitant) {
+            drawText(Game.bottomCtx, inhabitant.name.substring(0, 3), rx + 22, ry + 22, 10, '#2b6cb0', 'center');
+        }
+
+        if (Game.input.tapped && Game.input.x >= rx && Game.input.x <= rx + 44 && Game.input.y >= ry && Game.input.y <= ry + 30) {
+            Game.input.tapped = false;
+            AudioEngine.select();
+            if (inhabitant) {
+                Game.selectedResident = inhabitant;
+                Game.scene = 'ROOM';
+                speakMii(`やあ！${inhabitant.name}の部屋へようこそ！`, inhabitant.dna.pitch, inhabitant.dna.speed);
+            } else {
+                showModal("空き部屋", "この部屋は空室です。市役所で新しい住人を登録できます！");
+            }
+        }
+    }
+
+    // Page Controls
+    if (drawButton(Game.bottomCtx, 10, 155, 50, 25, '◀ 前へ')) {
+        if (Game.subPage > 0) Game.subPage--;
+    }
+    drawText(Game.bottomCtx, `${Game.subPage + 1} / 5 階`, 128, 172, 11, '#fff', 'center');
+    if (drawButton(Game.bottomCtx, 196, 155, 50, 25, '次へ ▶')) {
+        if (Game.subPage < 4) Game.subPage++;
+    }
+
+    if (drawButton(Game.bottomCtx, 100, 155, 56, 25, 'マップ', '#e2e8f0')) Game.scene = 'MAP';
+}
+
+// SCENE: RESIDENT ROOM
+function sceneRoom() {
+    const res = Game.selectedResident;
+
+    // Top Screen Wallpaper & Mii Display
+    fill(Game.topCtx, '#feebc8');
+    drawRect(Game.topCtx, 0, 110, 256, 82, '#e2e8f0'); // Floor
+    drawMii(Game.topCtx, res.dna, 128, 95, 1.8);
+
+    drawText(Game.topCtx, `${res.name} のお部屋`, 128, 20, 14, '#2d3748', 'center');
+
+    // Bottom Screen Interactions
+    fill(Game.bottomCtx, '#edf2f7');
+    drawText(Game.bottomCtx, `満腹度: ${res.fullness}%   ごきげん: ${res.happiness}%`, 128, 25, 11, '#2d3748', 'center');
+
+    if (drawButton(Game.bottomCtx, 20, 45, 100, 35, 'ご飯をあげる', '#c6f6d5')) {
+        if (Game.inventory.length > 0) {
+            const food = Game.inventory.pop();
+            res.fullness = Math.min(100, res.fullness + food.fill);
+            res.happiness = Math.min(100, res.happiness + 15);
+            AudioEngine.coin();
+            speakMii(`${food.name}、とってもおいしいよ！ありがとう！`, res.dna.pitch, res.dna.speed);
+        } else {
+            speakMii("食べ物が何もないよ...ショップで買ってきて！", res.dna.pitch, res.dna.speed);
+        }
+    }
+
+    if (drawButton(Game.bottomCtx, 136, 45, 100, 35, 'おしゃべり', '#bee3f8')) {
+        const phrases = [
+            "今日はとっても良い天気だね！",
+            "何か面白いゲームやらない？",
+            "島のみんなと仲良くなりたいな！",
+            "お腹がすいたら教えてね！"
+        ];
+        const p = phrases[Math.floor(Math.random() * phrases.length)];
+        speakMii(p, res.dna.pitch, res.dna.speed);
+    }
+
+    if (drawButton(Game.bottomCtx, 20, 95, 100, 35, '容姿エディット', '#fefcbf')) {
+        Game.scene = 'CHARACTER_CREATOR';
+        Game.subPage = 0; // Existing edit mode
+    }
+
+    if (drawButton(Game.bottomCtx, 136, 95, 100, 35, 'あいさつ変更', '#e9d8fd')) {
+        const input = prompt("新しいあいさつを入力:", res.catchphrase);
+        if (input) {
+            res.catchphrase = input.substring(0, 15);
+            speakMii(res.catchphrase, res.dna.pitch, res.dna.speed);
+        }
+    }
+
+    if (drawButton(Game.bottomCtx, 180, 155, 60, 25, '戻る', '#cbd5e0')) {
+        Game.scene = 'APARTMENT';
+    }
+}
+
+// SCENE: CHARACTER CREATOR (Mii Maker)
+function sceneCharacterCreator() {
+    const res = Game.selectedResident;
+
+    // Top Screen Preview
+    fill(Game.topCtx, '#edf2f7');
+    drawMii(Game.topCtx, res.dna, 128, 90, 2.2);
+    drawText(Game.topCtx, res.name, 128, 165, 15, '#1a202c', 'center');
+
+    fill(Game.bottomCtx, '#f7fafc');
+    drawText(Game.bottomCtx, "パーツ調整タッチパネル", 128, 18, 12, '#2d3748', 'center');
+
+    const controls = [
+        { label: '髪型', key: 'hair', max: 9 },
+        { label: '目', key: 'eye', max: 9 },
+        { label: '口', key: 'mouth', max: 4 },
+        { label: '肌色', key: 'skinColor', max: COLOR_PALETTES.skin.length - 1 },
+        { label: '髪色', key: 'hairColor', max: COLOR_PALETTES.hair.length - 1 },
+        { label: '声の高さ', key: 'pitch', max: 100, step: 10 }
+    ];
+
+    controls.forEach((ctrl, i) => {
+        const y = 32 + i * 22;
+        drawText(Game.bottomCtx, ctrl.label, 20, y + 12, 10, '#4a5568');
+
+        if (drawButton(Game.bottomCtx, 85, y, 28, 18, '◀')) {
+            res.dna[ctrl.key] = Math.max(0, res.dna[ctrl.key] - (ctrl.step || 1));
+            if(ctrl.key === 'pitch') speakMii("声の調子です", res.dna.pitch, res.dna.speed);
+        }
+
+        drawText(Game.bottomCtx, `${res.dna[ctrl.key]}`, 135, y + 12, 10, '#1a202c', 'center');
+
+        if (drawButton(Game.bottomCtx, 155, y, 28, 18, '▶')) {
+            res.dna[ctrl.key] = Math.min(ctrl.max, res.dna[ctrl.key] + (ctrl.step || 1));
+            if(ctrl.key === 'pitch') speakMii("声の調子です", res.dna.pitch, res.dna.speed);
+        }
+    });
+
+    if (drawButton(Game.bottomCtx, 10, 162, 70, 22, '名前変更')) {
+        const newName = prompt("名前を入力してください", res.name);
+        if (newName) res.name = newName.substring(0, 8);
+    }
+
+    if (drawButton(Game.bottomCtx, 180, 162, 65, 22, '決定・完了', '#68d391')) {
+        if (Game.subPage === 1) { // New resident creation mode
+            Game.residents.push(res);
+            showModal("登録完了", `${res.name} がマンションに引っ越してきました！`);
+            Game.scene = 'CITY_HALL';
+        } else {
+            Game.scene = 'ROOM';
+        }
+    }
+}
+
+// SCENE: SHOP HUB (Food & Items)
+function sceneShop() {
+    drawBackgroundSky(Game.topCtx);
+    drawText(Game.topCtx, "アイランド 総合ショップ", 128, 25, 16, '#2d3748', 'center');
+    drawText(Game.topCtx, `所持金: ${Game.money} G`, 128, 170, 13, '#d69e2e', 'center');
+
+    fill(Game.bottomCtx, '#f7fafc');
+
+    FOOD_SHOP.slice(0, 5).forEach((item, i) => {
+        const y = 15 + i * 28;
+        drawText(Game.bottomCtx, `${item.name}`, 20, y + 16, 11, '#2d3748');
+        drawText(Game.bottomCtx, `+${item.fill}%`, 130, y + 16, 10, '#38a169');
+
+        if (drawButton(Game.bottomCtx, 175, y, 65, 22, `${item.price}G`, '#feebc8')) {
+            if (Game.money >= item.price) {
+                Game.money -= item.price;
+                Game.inventory.push(item);
+                AudioEngine.coin();
+                showModal("購入完了", `${item.name} を購入しました！`);
+            } else {
+                AudioEngine.cancel();
+                showModal("残高不足", "お金が足りません！");
+            }
+        }
+    });
+
+    if (drawButton(Game.bottomCtx, 180, 160, 60, 25, 'マップ', '#cbd5e0')) Game.scene = 'MAP';
+}
+
+// SCENE: DRESS-UP STUDIO
+function sceneDressup() {
+    drawBackgroundSky(Game.topCtx);
+    drawText(Game.topCtx, "お着替えブティック", 128, 25, 16, '#2d3748', 'center');
+
+    fill(Game.bottomCtx, '#f7fafc');
+
+    CLOTHES_SHOP.slice(0, 5).forEach((item, i) => {
+        const y = 15 + i * 28;
+        drawText(Game.bottomCtx, item.name, 20, y + 16, 11, '#2d3748');
+
+        if (drawButton(Game.bottomCtx, 175, y, 65, 22, `${item.price}G`, '#fbb6ce')) {
+            if (Game.money >= item.price) {
+                Game.money -= item.price;
+                if (Game.selectedResident) {
+                    Game.selectedResident.dna.cloth = item.style;
+                }
+                AudioEngine.coin();
+                showModal("お着替え", `${item.name} を購入して着替えました！`);
+            } else {
+                AudioEngine.cancel();
+                showModal("残高不足", "お金が足りません！");
+            }
+        }
+    });
+
+    if (drawButton(Game.bottomCtx, 180, 160, 60, 25, 'マップ', '#cbd5e0')) Game.scene = 'MAP';
+}
+
+// SCENE: CITY HALL (市役所)
+function sceneCityHall() {
+    drawBackgroundSky(Game.topCtx);
+    drawText(Game.topCtx, "島管理 市役所", 128, 25, 16, '#2d3748', 'center');
+    drawText(Game.topCtx, `現在の島民数: ${Game.residents.length} / 100人`, 128, 50, 11, '#4a5568', 'center');
+
+    fill(Game.bottomCtx, '#e6fffa');
+
+    if (drawButton(Game.bottomCtx, 30, 25, 196, 32, '新住民を登録する', '#9ae6b4')) {
+        if (Game.residents.length >= 100) {
+            showModal("満室", "マンションが満員です！");
+        } else {
+            let emptyRoom = -1;
+            for (let i = 0; i < 100; i++) {
+                if (!Game.residents.find(r => r.room === i)) { emptyRoom = i; break; }
+            }
+            const newMii = new Resident(Game.residents.length, `トモ${Game.residents.length + 1}`);
+            newMii.room = emptyRoom;
+            Game.selectedResident = newMii;
+            Game.scene = 'CHARACTER_CREATOR';
+            Game.subPage = 1; // New creation mode
+        }
+    }
+
+    if (drawButton(Game.bottomCtx, 30, 68, 90, 30, 'データセーブ', '#b2f5ea')) saveGameData();
+    if (drawButton(Game.bottomCtx, 136, 68, 90, 30, 'データロード', '#e9d8fd')) loadGameData();
+
+    if (drawButton(Game.bottomCtx, 30, 110, 196, 30, 'データ全初期化', '#feb2b2')) {
+        localStorage.removeItem('tomocore_ds_save');
+        showModal("初期化", "データを削除しました。ページを再読み込みしてください。");
+    }
+
+    if (drawButton(Game.bottomCtx, 180, 155, 60, 25, 'マップ', '#cbd5e0')) Game.scene = 'MAP';
+}
+
+// SCENE: COMPATIBILITY SHRINE (相性神社)
+function sceneShrine() {
+    fill(Game.topCtx, '#feb2b2');
+    drawText(Game.topCtx, "相性測定 神社", 128, 25, 16, '#9b2c2c', 'center');
+
+    fill(Game.bottomCtx, '#fff5f5');
+
+    if (Game.residents.length < 2) {
+        drawText(Game.bottomCtx, "住人が2人以上必要です", 128, 90, 12, '#e53e3e', 'center');
+    } else {
+        if (!Game.temp.r1) Game.temp.r1 = 0;
+        if (!Game.temp.r2) Game.temp.r2 = 1;
+
+        const res1 = Game.residents[Game.temp.r1 % Game.residents.length];
+        const res2 = Game.residents[Game.temp.r2 % Game.residents.length];
+
+        drawMii(Game.topCtx, res1.dna, 60, 100, 1.2);
+        drawMii(Game.topCtx, res2.dna, 196, 100, 1.2);
+
+        drawText(Game.bottomCtx, res1.name, 60, 40, 12, '#2d3748', 'center');
+        drawText(Game.bottomCtx, res2.name, 196, 40, 12, '#2d3748', 'center');
+
+        if (drawButton(Game.bottomCtx, 30, 55, 60, 22, '変更')) Game.temp.r1++;
+        if (drawButton(Game.bottomCtx, 166, 55, 60, 22, '変更')) Game.temp.r2++;
+
+        if (drawButton(Game.bottomCtx, 80, 95, 96, 32, '相性を占う！', '#fbb6ce')) {
+            AudioEngine.fanfare();
+            Game.temp.score = Math.floor(Math.random() * 101);
+        }
+
+        if (Game.temp.score !== undefined) {
+            drawText(Game.topCtx, `相性: ${Game.temp.score} %`, 128, 165, 18, '#c53030', 'center');
+        }
+    }
+
+    if (drawButton(Game.bottomCtx, 180, 160, 60, 25, 'マップ', '#cbd5e0')) {
+        delete Game.temp.score;
+        Game.scene = 'MAP';
+    }
+}
+
+// SCENE: DRAWING CANVAS (お絵かき広場)
+function sceneCanvas() {
+    fill(Game.topCtx, '#2d3748');
+    drawText(Game.topCtx, "タッチお絵かき キャンバス", 128, 20, 14, '#fff', 'center');
+
+    // Display drawn artwork on top screen frame
+    if (Game.canvasDrawingData) {
+        Game.topCtx.putImageData(Game.canvasDrawingData, 0, 30);
+    }
+
+    // Interactive lower canvas drawing
+    if (Game.input.isDown && Game.input.y < 150) {
+        Game.bottomCtx.fillStyle = '#e53e3e';
+        Game.bottomCtx.beginPath();
+        Game.bottomCtx.arc(Game.input.x, Game.input.y, 3, 0, Math.PI * 2);
+        Game.bottomCtx.fill();
+        Game.canvasDrawingData = Game.bottomCtx.getImageData(0, 0, 256, 192);
+    }
+
+    if (drawButton(Game.bottomCtx, 20, 158, 60, 24, '全消去', '#feb2b2')) {
+        fill(Game.bottomCtx, '#ffffff');
+        Game.canvasDrawingData = Game.bottomCtx.getImageData(0, 0, 256, 192);
+    }
+
+    if (drawButton(Game.bottomCtx, 180, 158, 60, 24, 'マップ', '#cbd5e0')) Game.scene = 'MAP';
+}
+
+// SCENE: LIVE STAGE (ライブパフォーマンス)
+function sceneLive() {
+    fill(Game.topCtx, '#1a202c');
+
+    // Disco Stage Lighting
+    if (Game.frame % 10 < 5) {
+        drawRect(Game.topCtx, 20, 0, 40, 192, 'rgba(236, 72, 153, 0.2)');
+        drawRect(Game.topCtx, 196, 0, 40, 192, 'rgba(59, 130, 246, 0.2)');
+    }
+
+    drawText(Game.topCtx, "★ MII LIVE CONCERT ★", 128, 25, 15, '#f6e05e', 'center');
+
+    if (Game.residents.length > 0) {
+        const singer = Game.residents[0];
+        drawMii(Game.topCtx, singer.dna, 128, 110, 1.6);
+    }
+
+    fill(Game.bottomCtx, '#2d3748');
+
+    if (drawButton(Game.bottomCtx, 68, 60, 120, 40, '歌ってもらう！', '#f6e05e')) {
+        if (Game.residents.length > 0) {
+            const singer = Game.residents[0];
+            speakMii("ラララ〜♪ トモダチコレクションへようこそ！みんなで歌おう！", singer.dna.pitch, singer.dna.speed);
+        }
+    }
+
+    if (drawButton(Game.bottomCtx, 180, 155, 60, 25, 'マップ', '#cbd5e0')) Game.scene = 'MAP';
+}
+
+// SCENE: MINI-GAME HUB (ゲームセンター & トモリズム)
+function sceneMinigame() {
+    fill(Game.topCtx, '#2b6cb0');
+    drawText(Game.topCtx, "トモダチ ゲーセン", 128, 25, 16, '#fff', 'center');
+
+    fill(Game.bottomCtx, '#edf2f7');
+
+    if (!Game.temp.rhythm) {
+        Game.temp.rhythm = { score: 0, combo: 0, noteY: -20, active: false };
+    }
+    const r = Game.temp.rhythm;
+
+    if (!r.active) {
+        drawText(Game.bottomCtx, "「トモリズム」に挑戦！", 128, 50, 13, '#2d3748', 'center');
+        if (drawButton(Game.bottomCtx, 78, 80, 100, 36, 'スタート！', '#48bb78')) {
+            r.active = true;
+            r.score = 0;
+            r.noteY = 0;
+        }
+    } else {
+        // Rhythm Game Loop
+        r.noteY += 3;
+        if (r.noteY > 180) {
+            r.noteY = -20;
+        }
+
+        drawRect(Game.bottomCtx, 108, r.noteY, 40, 15, '#e53e3e'); // Falling Note
+        drawRect(Game.bottomCtx, 98, 140, 60, 20, '#4299e1', '#2b6cb0'); // Hit Zone
+
+        drawText(Game.topCtx, `SCORE: ${r.score}`, 128, 100, 18, '#f6e05e', 'center');
+
+        if (drawButton(Game.bottomCtx, 98, 140, 60, 25, 'PUSH!', '#ecc94b')) {
+            if (r.noteY >= 120 && r.noteY <= 160) {
+                r.score += 100;
+                Game.money += 50;
+                AudioEngine.coin();
+                r.noteY = -20;
+            } else {
+                AudioEngine.cancel();
+            }
+        }
+    }
+
+    if (drawButton(Game.bottomCtx, 180, 160, 60, 25, 'マップ', '#cbd5e0')) {
+        delete Game.temp.rhythm;
+        Game.scene = 'MAP';
+    }
+}
+
+// Main Game Loop Engine
+function gameLoop() {
+    Game.frame++;
+    updateWeather();
+
+    // Clear Canvas Screens
+    Game.topCtx.clearRect(0, 0, 256, 192);
+    Game.bottomCtx.clearRect(0, 0, 256, 192);
+
+    // Scene Router
+    switch (Game.scene) {
+        case 'TITLE': sceneTitle(); break;
+        case 'MAP': sceneMap(); break;
+        case 'APARTMENT': sceneApartment(); break;
+        case 'ROOM': sceneRoom(); break;
+        case 'CHARACTER_CREATOR': sceneCharacterCreator(); break;
+        case 'SHOP': sceneShop(); break;
+        case 'DRESSUP': sceneDressup(); break;
+        case 'CITY_HALL': sceneCityHall(); break;
+        case 'SHRINE': sceneShrine(); break;
+        case 'CANVAS': sceneCanvas(); break;
+        case 'LIVE': sceneLive(); break;
+        case 'MINIGAME': sceneMinigame(); break;
+    }
+
+    // Reset single-frame inputs
+    Game.input.justPressed.a = false;
+    Game.input.justPressed.b = false;
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Start Game
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
